@@ -1,4 +1,4 @@
-const valid=a=>Boolean(a && [a.x,a.y,a.z].every(Number.isFinite));
+const valid=a=>a && [a.x,a.y,a.z].every(Number.isFinite);
 
 // Keep sample time independent of callback delivery time (callbacks can arrive in bursts).
 export class MotionInput {

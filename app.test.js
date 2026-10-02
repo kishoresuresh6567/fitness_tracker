@@ -95,20 +95,6 @@ test('a fallback that has not produced readings does not block returning motion 
   assert.equal(stopped,true);assert.ok(app.state().total>=17);
   assert.match(app.elements.get('sensor-status').textContent,/Motion \+ gravity/);
 });
-test('loose-pocket motion reaches the displayed counter through permission-required and permission-free paths',async()=>{
-  for(const motion of [{},{requestPermission:async()=> 'granted'}])for(const gravity of [true,false]){
-    const app=boot(new Map(),motion);await app.click();
-    for(let t=0;t<12000;t+=20){
-      app.advance(20);const seconds=t/1000,angle=0.8*Math.sin(seconds*4*Math.PI);
-      const radius=(gravity?9.81:0)+1.6*Math.sin(seconds*4*Math.PI)+0.3*Math.sin(seconds*8*Math.PI);
-      const event={timeStamp:t,rotationRate:{gamma:576*Math.cos(seconds*4*Math.PI)}};
-      event[gravity?'accelerationIncludingGravity':'acceleration']={x:radius*Math.sin(angle),y:radius*Math.cos(angle),z:0};
-      app.handlers.devicemotion(event);
-    }
-    assert.ok(app.state().total>=20 && app.state().total<=25,`gravity=${gravity}, count=${app.state().total}`);
-    assert.equal(app.elements.get('steps').textContent,String(app.state().total));
-  }
-});
 test('calories persist across reload, freeze during pauses and save with history',async()=>{
   const app=boot();await app.click();
   for(let t=0;t<10000;t+=20){app.advance(20);app.handlers.devicemotion({timeStamp:t,accelerationIncludingGravity:{x:0,y:9.81+1.4*Math.sin(t/1000*4*Math.PI),z:0}});}

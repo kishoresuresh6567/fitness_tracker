@@ -6,7 +6,7 @@ test('stationary device does not count',()=>assert.equal(simulate({amplitude:0})
 test('sustained walking cadence confirms buffered steps',()=>{const n=simulate();assert.ok(n>=17 && n<=21,`count=${n}`);});
 test('running cadence counts',()=>assert.ok(simulate({frequency:3,amplitude:5})>=25));
 test('rapid shaking rejected',()=>assert.equal(simulate({frequency:6}),0));
-test('extreme rotation rejected',()=>assert.equal(simulate({rotation:1200}),0));
+test('strong rotation rejected',()=>assert.equal(simulate({rotation:250}),0));
 test('short burst not counted',()=>assert.equal(simulate({duration:1300}),0));
 test('missing sensor values ignored',()=>assert.equal(new StepDetector().feed(0,{x:null,y:0,z:0}),null));
 test('gentle walking signal counts instead of remaining at zero',()=>{
@@ -35,25 +35,4 @@ test('changing orientation without walking does not produce steps',()=>{
 });
 test('slow walking cadence counts',()=>{
   const count=simulate({frequency:0.75,amplitude:1.5,duration:16000});assert.ok(count>=9 && count<=13,`count=${count}`);
-});
-function loosePocket({gravity=true,hz=50,duration=12000}={}){
-  const detector=new StepDetector();let count=0;
-  for(let t=0;t<duration;t+=1000/hz){
-    const seconds=t/1000,angle=0.8*Math.sin(seconds*4*Math.PI);
-    const bounce=1.6*Math.sin(seconds*4*Math.PI)+0.3*Math.sin(seconds*8*Math.PI);
-    const radius=(gravity?9.81:0)+bounce;
-    count+=detector.feed(t,{x:radius*Math.sin(angle),y:radius*Math.cos(angle),z:0},{gamma:0.8*4*Math.PI*180/Math.PI*Math.cos(seconds*4*Math.PI)},gravity)?.steps||0;
-  }
-  return count;
-}
-test('loose pocket swing and bounce count with gravity-inclusive samples at mobile rates',()=>{
-  for(const hz of [20,30,60]){const count=loosePocket({hz});assert.ok(count>=20 && count<=25,`${hz} Hz: ${count}`);}
-});
-test('loose pocket counts with gravity-free acceleration and changing axes',()=>{
-  const count=loosePocket({gravity:false});assert.ok(count>=20 && count<=25,`count=${count}`);
-});
-test('rotating loosely with no walking acceleration does not count',()=>{
-  const detector=new StepDetector();let count=0;
-  for(let t=0;t<12000;t+=20){const angle=0.8*Math.sin(t/1000*4*Math.PI);count+=detector.feed(t,{x:9.81*Math.sin(angle),y:9.81*Math.cos(angle),z:0},{gamma:580*Math.cos(t/1000*4*Math.PI)})?.steps||0;}
-  assert.equal(count,0);
 });

@@ -7,6 +7,10 @@ try{const data=JSON.parse(localStorage.getItem('stride-v1'));if(data && Number.i
 let active=false,steps=0,elapsed=0,started=0,lastStep=0,lastSensor=0,timer,wakeLock,startPending=false;
 let sensorReady=false,lastEvent=0,sensorSamples=0;
 let energy=0;
+saved.name=typeof saved.name==='string'?saved.name.trim().slice(0,60):'';
+function renderGreeting(){$('greeting').textContent=saved.name?`Find your stride, ${saved.name}.`:'Find your stride.';}
+$('name').value=saved.name;renderGreeting();
+$('name').addEventListener('input',()=>{saved.name=$('name').value.trim().slice(0,60);renderGreeting();persist();});
 saved.weight=Number.isFinite(saved.weight) && saved.weight>=30 && saved.weight<=300?saved.weight:70;
 saved.activity=saved.activity==='jogging'?'jogging':'walking';
 function renderCalories(){$('calories').textContent=(energy*saved.weight).toFixed(1);}
@@ -21,7 +25,7 @@ function updateSensorStatus(){
   const duration=lastSampleTime-firstSampleTime;
   const hz=sensorSamples>1 && duration>0?Math.round((sensorSamples-1)*1000/duration):0;
   const state=!sensorReady?'Permission needed':!sensorSamples?'Waiting for readings':performance.now()-lastSensor>2000?'Readings stopped':`${sensorSource} · ${hz} Hz · ${sensorSamples} readings`;
-  $('sensor-status').textContent=`Motion v2.2 · ${state}`;
+  $('sensor-status').textContent=`Motion v2.1 · ${state}`;
 }
 function resetSensors(){motionInput.reset();detector.reset();sensorSamples=0;lastEvent=0;lastSensor=performance.now();lastStep=0;fallbackTried=false;sensorSource='Waiting';firstSampleTime=null;lastSampleTime=null;}
 function stopFallback(){if(accelerometer){const sensor=accelerometer;accelerometer=null;try{sensor.stop();}catch{}motionInput.reset();detector.reset();}}
@@ -45,18 +49,18 @@ async function enableMotion(){
   window.addEventListener('devicemotion',onMotion);
   sensorReady=true;resetSensors();$('motion').hidden=true;if(active && !Motion)tryFallback();
 }
-async function retryMotion(){if(startPending || !active)return;startPending=true;$('motion').disabled=true;try{await enableMotion();$('badge').textContent='Listening for steps';$('status').textContent='Motion access enabled. Walk steadily with your phone in a trouser pocket.';}catch(error){sensorReady=false;$('status').textContent=error.message;}finally{startPending=false;$('motion').disabled=false;}}
+async function retryMotion(){if(startPending || !active)return;startPending=true;$('motion').disabled=true;try{await enableMotion();$('badge').textContent='Listening for steps';$('status').textContent='Motion access enabled. Walk steadily with your phone in a snug pocket.';}catch(error){sensorReady=false;$('status').textContent=error.message;}finally{startPending=false;$('motion').disabled=false;}}
 async function start(){if(startPending)return;startPending=true;$('start').disabled=true;try{
   await enableMotion();
   if(document.hidden)return;
-  active=true;steps=0;energy=0;elapsed=0;started=Date.now();lastSensor=performance.now();lastStep=0;detector.reset();persist();render();$('time').textContent='00:00';$('cadence').textContent='—';$('movement').textContent='Finding rhythm';$('badge').textContent='Listening for steps';$('start').textContent='■   Finish session';$('status').textContent='Walk steadily with your phone in a trouser pocket. The first steps appear after rhythm is confirmed.';
+  active=true;steps=0;energy=0;elapsed=0;started=Date.now();lastSensor=performance.now();lastStep=0;detector.reset();persist();render();$('time').textContent='00:00';$('cadence').textContent='—';$('movement').textContent='Finding rhythm';$('badge').textContent='Listening for steps';$('start').textContent='■   Finish session';$('status').textContent='Walk steadily with your phone in a snug pocket. The first steps appear after rhythm is confirmed.';
   if(!window.DeviceMotionEvent)tryFallback();
   timer=setInterval(tick,500);
   await acquireWakeLock();
 }catch(error){$('status').textContent=error.message;}finally{startPending=false;$('start').disabled=false;}}
 function stop(message='Session saved. Ready when you are.'){if(!active)return;active=false;elapsed=Math.max(0,Date.now()-started);window.removeEventListener('devicemotion',onMotion);clearInterval(timer);if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}if(steps){saved.sessions.unshift({date:new Date().toISOString(),steps,duration:elapsed,calories:energy*saved.weight,weight:saved.weight});saved.sessions=saved.sessions.slice(0,10);} $('time').textContent=formatTime(elapsed);$('start').textContent='▶   Start a new session';$('badge').textContent='Session complete';$('movement').textContent='Standing by';$('cadence').textContent='—';$('status').textContent=message;persist();render();}
 $('start').addEventListener('click',()=>{if(active){stop();stopFallback();$('motion').hidden=true;}else return start();});
-function tick(){if(!active || document.hidden)return;updateSensorStatus();if(accelerometer && sensorSource!=='Accelerometer' && performance.now()-fallbackStarted>3000)stopFallback();if(sensorReady && performance.now()-lastSensor>2000 && !accelerometer && !fallbackTried){motionInput.reset();detector.reset();tryFallback();}elapsed=Math.max(0,Date.now()-started);$('time').textContent=formatTime(elapsed);if(!sensorReady)return;if(performance.now()-lastSensor>6000){$('status').textContent=lastEvent && performance.now()-lastEvent<6000?'This browser is sending motion events without usable acceleration. Check motion sensor access for this website in your browser settings.':'No motion data received. Tap Enable motion tracking and allow access. Keep this page visible on a phone with motion sensors.';$('motion').hidden=false;$('badge').textContent='Waiting for sensor';$('cadence').textContent='—';$('movement').textContent='Standing by';}else if(!lastStep && sensorSamples>0){$('badge').textContent='Motion connected';$('status').textContent='Motion data is arriving. Walk steadily for at least five strides with your phone in a trouser pocket.';}else if(lastStep && performance.now()-lastStep>2500){$('cadence').textContent='—';$('movement').textContent='Standing by';$('badge').textContent='Listening for steps';}}
+function tick(){if(!active || document.hidden)return;updateSensorStatus();if(accelerometer && sensorSource!=='Accelerometer' && performance.now()-fallbackStarted>3000)stopFallback();if(sensorReady && performance.now()-lastSensor>2000 && !accelerometer && !fallbackTried){motionInput.reset();detector.reset();tryFallback();}elapsed=Math.max(0,Date.now()-started);$('time').textContent=formatTime(elapsed);if(!sensorReady)return;if(performance.now()-lastSensor>6000){$('status').textContent=lastEvent && performance.now()-lastEvent<6000?'This browser is sending motion events without usable acceleration. Check motion sensor access for this website in your browser settings.':'No motion data received. Tap Enable motion tracking and allow access. Keep this page visible on a phone with motion sensors.';$('motion').hidden=false;$('badge').textContent='Waiting for sensor';$('cadence').textContent='—';$('movement').textContent='Standing by';}else if(!lastStep && sensorSamples>0){$('badge').textContent='Motion connected';$('status').textContent='Motion data is arriving. Walk steadily for at least five strides with your phone in a snug pocket.';}else if(lastStep && performance.now()-lastStep>2500){$('cadence').textContent='—';$('movement').textContent='Standing by';$('badge').textContent='Listening for steps';}}
 async function acquireWakeLock(){if(!active || document.hidden || !navigator.wakeLock || wakeLock)return;try{const lock=await navigator.wakeLock.request('screen');if(active && !document.hidden){wakeLock=lock;lock.addEventListener('release',()=>{if(wakeLock===lock)wakeLock=null;});}else await lock.release();}catch{}}
 function resume(){if(!active)return;stopFallback();resetSensors();tick();$('cadence').textContent='—';$('movement').textContent='Finding rhythm';$('badge').textContent=sensorReady?'Session resumed':'Motion access needed';$('status').textContent=sensorReady?'Your session is still open. Steps may be missed while another app is open or the screen is locked.':'Your session was restored. Tap Enable motion tracking to allow your browser to use the motion sensor.';$('motion').hidden=sensorReady;acquireWakeLock();}
 $('motion').addEventListener('click',retryMotion);
