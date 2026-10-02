@@ -1,0 +1,13 @@
+# Stride
+
+A dependency-free web step tracker. Run `npm start`, then open http://localhost:3000. Run `npm test` for synthetic detector checks.
+
+For actual tracking, serve these static files over **HTTPS** and open them on a phone. A phone visiting an HTTP LAN address will not have secure sensor access. Grant motion permission when prompted. Desktop browsers can show the interface but generally do not supply motion data.
+
+Tap Start, place the phone in a snug trouser pocket, and walk or run steadily. Five consistent acceleration peaks confirm the initial steps; later accepted peaks add to the session and lifetime total. Finish saves the session locally. Switching apps keeps the session open and checkpoints its progress. The timer uses a saved wall-clock start time, so it catches up after suspension or a reload. Returning resumes sensor processing and requests a screen wake lock again when supported.
+
+Background step counting is not guaranteed: mobile browsers can suspend JavaScript and motion sensor events while another app is open or the screen is locked. Missing sensor samples cannot be recovered or converted into steps. Keep the page visible for reliable tracking. Continuous background counting requires a native app or native integration with platform activity sensors; a service worker or installed web app cannot remove this restriction. Reloading restores the session, but a browser that requires a fresh gesture for motion permission may need the session finished and started again. Session duration includes time spent away from the page and can be affected by changes to the device clock.
+
+The detector estimates gravity, filters vertical acceleration, checks cadence consistency, and rejects excessive rotation, extreme acceleration and rapid peaks. It is a heuristic: deliberate rhythmic shaking can still count, and real steps can be missed. It cannot verify exercise form or conclusively classify walking versus running. The displayed pace is based on cadence. Thresholds require real-phone calibration; automated tests only check synthetic signals. No claim of measured accuracy is made.
+
+Totals and the last ten completed sessions are stored in this browser's local storage. Clearing site data clears the total. No sensor data is sent to a server. Google Fonts are requested for typography, with local font fallbacks.
