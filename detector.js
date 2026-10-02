@@ -18,7 +18,7 @@ export class StepDetector {
     if(spin>170 || linear>22){this.rotationUntil=time+600;this.peaks=[];this.confirmed=false;}
     this.filtered+= (1-Math.exp(-dt/55))*(vertical-this.filtered);
     let result=null;
-    if(this.previous>this.before && this.previous>=this.filtered && this.previous>1.05 && this.previous<13 && lateral<Math.max(3.5,Math.abs(vertical)*2) && time>this.rotationUntil){
+    if(this.previous>this.before && this.previous>=this.filtered && this.previous>0.55 && this.previous<13 && lateral<Math.max(3.5,Math.abs(vertical)*2) && time>this.rotationUntil){
       const interval=this.lastPeak===null?null:time-this.lastPeak;
       if(interval!==null && interval<280){this.lastPeak=time;this.peaks=[];this.confirmed=false;}
       if(interval===null || interval>=280){

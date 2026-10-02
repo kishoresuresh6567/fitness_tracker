@@ -9,3 +9,14 @@ test('rapid shaking rejected',()=>assert.equal(simulate({frequency:6}),0));
 test('strong rotation rejected',()=>assert.equal(simulate({rotation:250}),0));
 test('short burst not counted',()=>assert.equal(simulate({duration:1300}),0));
 test('missing sensor values ignored',()=>assert.equal(new StepDetector().feed(0,{x:null,y:0,z:0}),null));
+test('gentle walking signal counts instead of remaining at zero',()=>{
+  const count=simulate({amplitude:0.9});assert.ok(count>=17 && count<=21,`count=${count}`);
+});
+test('small stationary sensor noise does not count',()=>assert.equal(simulate({amplitude:0.2}),0));
+test('quantized walking readings at 20 Hz work in different pocket orientations',()=>{
+  for(const axis of ['x','y','z']){
+    const detector=new StepDetector();let count=0;
+    for(let t=0;t<10000;t+=50){const a={x:0,y:0,z:0};a[axis]=Math.round((9.81+0.9*Math.sin(t/1000*4*Math.PI))*10)/10;count+=detector.feed(t,a)?.steps||0;}
+    assert.ok(count>=17 && count<=21,`${axis}: ${count}`);
+  }
+});
