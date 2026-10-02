@@ -2,6 +2,8 @@
 
 A dependency-free web step tracker. Run `npm start`, then open http://localhost:3000. Run `npm test` for synthetic detector checks.
 
+For Vercel, import this repository with the repository root as the Root Directory. The checked-in `vercel.json` selects the Other framework preset, runs `npm run build`, and serves `dist/` as a static site. No serverless function is required. `server.js` is only the local development server. After pushing these deployment files, redeploy the project to replace any previous Node function deployment. For other static hosts, run `npm run build` and publish `dist/`.
+
 For actual tracking, serve these static files over **HTTPS** and open them on a phone. A phone visiting an HTTP LAN address will not have secure sensor access. Grant motion permission when prompted. Desktop browsers can show the interface but generally do not supply motion data.
 
 Tap Start, place the phone in a snug trouser pocket, and walk or run steadily. Five consistent acceleration peaks confirm the initial steps; later accepted peaks add to the session and lifetime total. Finish saves the session locally. Switching apps keeps the session open and checkpoints its progress. The timer uses a saved wall-clock start time, so it catches up after suspension or a reload. Returning resumes sensor processing and requests a screen wake lock again when supported.
