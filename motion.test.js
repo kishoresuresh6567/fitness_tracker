@@ -34,3 +34,7 @@ test('switching gravity mode signals a detector reset; invalid data is never cou
   input.read({timeStamp:10,accelerationIncludingGravity:{x:0,y:0,z:9.81}},10);
   assert.equal(input.read({timeStamp:20,acceleration:{x:0,y:1,z:0}},20).reset,true);
 });
+test('an absent gravity-inclusive field explicitly selects gravity-free detection',()=>{
+  const sample=new MotionInput().read({timeStamp:1,acceleration:{x:0,y:1,z:0}},1);
+  assert.equal(sample.gravity,false);
+});
