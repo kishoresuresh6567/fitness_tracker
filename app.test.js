@@ -86,3 +86,11 @@ test('permissions policy blocks tracking with an actionable error',async()=>{
   assert.match(app.elements.get('status').textContent,/permissions policy/);
   assert.equal(app.handlers.devicemotion,undefined);
 });
+test('a fallback that has not produced readings does not block returning motion events',async()=>{
+  const app=boot();let stopped=false;
+  app.window.Accelerometer=class {addEventListener(){}start(){}stop(){stopped=true;}};
+  await app.click();app.advance(2100);
+  for(let t=0;t<10000;t+=20){app.advance(20);app.handlers.devicemotion({timeStamp:t,accelerationIncludingGravity:{x:0,y:9.81+1.4*Math.sin(t/1000*4*Math.PI),z:0}});}
+  assert.equal(stopped,true);assert.ok(app.state().total>=17);
+  assert.match(app.elements.get('sensor-status').textContent,/Motion \+ gravity/);
+});
