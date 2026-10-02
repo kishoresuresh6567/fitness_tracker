@@ -3,17 +3,18 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {StepDetector} from './detector.js';
+import {MotionInput} from './motion.js';
 
-const source=readFileSync(new URL('./app.js',import.meta.url),'utf8').replace("import {StepDetector} from './detector.js';",'');
+const source=readFileSync(new URL('./app.js',import.meta.url),'utf8').replace("import {StepDetector} from './detector.js';",'').replace("import {MotionInput} from './motion.js';",'');
 function boot(storage=new Map(),motion={}){
   let now=100000;
   const handlers={},elements=new Map(),intervals=new Set();
   const element=()=>({textContent:'',disabled:false,append(){},replaceChildren(){},addEventListener(type,fn){this[type]=fn;}});
   const document={hidden:false,getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);},createElement:element,addEventListener(type,fn){handlers[type]=fn;}};
   const window={isSecureContext:true,DeviceMotionEvent:motion,addEventListener(type,fn){handlers[type]=fn;},removeEventListener(type){delete handlers[type];}};
-  const context=vm.createContext({document,window,DeviceMotionEvent:window.DeviceMotionEvent,navigator:{},StepDetector,Date:class extends Date{static now(){return now;}},performance:{now:()=>now},localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},setInterval:fn=>{intervals.add(fn);return fn;},clearInterval:fn=>intervals.delete(fn)});
+  const context=vm.createContext({document,window,DeviceMotionEvent:window.DeviceMotionEvent,navigator:{},StepDetector,MotionInput,Date:class extends Date{static now(){return now;}},performance:{now:()=>now},localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},setInterval:fn=>{intervals.add(fn);return fn;},clearInterval:fn=>intervals.delete(fn)});
   vm.runInContext(source,context);
-  return {storage,document,handlers,elements,context,advance(ms){now+=ms;for(const tick of intervals)tick();},async click(){await elements.get('start').click();},async enable(){await elements.get('motion').click();},state(){return JSON.parse(storage.get('stride-v1'));}};
+  return {storage,document,window,handlers,elements,context,advance(ms){now+=ms;for(const tick of intervals)tick();},async click(){await elements.get('start').click();},async enable(){await elements.get('motion').click();},state(){return JSON.parse(storage.get('stride-v1'));}};
 }
 test('switching apps and pagehide keep the session; return catches up without invented steps',async()=>{
   const app=boot();await app.click();
@@ -65,4 +66,23 @@ test('missing and null sensor readings expose recovery instead of claiming track
   app.handlers.devicemotion({accelerationIncludingGravity:{x:null,y:null,z:null}});app.advance(500);
   assert.match(app.elements.get('status').textContent,/without usable acceleration/);
   assert.equal(app.state().total,0);
+});
+test('Chromium accelerometer fallback counts once and stops on background and finish',async()=>{
+  const app=boot();let sensor;
+  app.window.Accelerometer=class {
+    constructor(){sensor=this;this.handlers={};this.stopped=false;}
+    addEventListener(type,fn){this.handlers[type]=fn;}
+    start(){}stop(){this.stopped=true;}
+  };
+  await app.click();app.advance(2100);assert.ok(sensor);
+  for(let t=0;t<10000;t+=20){app.advance(20);sensor.x=0;sensor.y=9.81+1.4*Math.sin(t/1000*4*Math.PI);sensor.z=0;sensor.timestamp=t; sensor.handlers.reading();app.handlers.devicemotion({timeStamp:t,accelerationIncludingGravity:{x:sensor.x,y:sensor.y,z:0}});}
+  assert.ok(app.state().total>=17 && app.state().total<=21);
+  app.document.hidden=true;app.handlers.visibilitychange();assert.equal(sensor.stopped,true);
+  app.document.hidden=false;app.handlers.visibilitychange();app.advance(2100);assert.equal(sensor.stopped,false);
+  await app.click();assert.equal(sensor.stopped,true);
+});
+test('permissions policy blocks tracking with an actionable error',async()=>{
+  const app=boot();app.document.permissionsPolicy={allowsFeature:()=>false};await app.click();
+  assert.match(app.elements.get('status').textContent,/permissions policy/);
+  assert.equal(app.handlers.devicemotion,undefined);
 });

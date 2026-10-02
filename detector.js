@@ -2,16 +2,17 @@
 export class StepDetector {
   constructor(){this.reset();}
   reset(){this.gravity=null;this.filtered=0;this.previous=0;this.before=0;this.lastTime=null;this.lastPeak=null;this.peaks=[];this.confirmed=false;this.rotationUntil=0;}
-  feed(time, acceleration, rotation={}){
+  feed(time, acceleration, rotation={},includesGravity=true){
     if(!acceleration || ![acceleration.x,acceleration.y,acceleration.z].every(Number.isFinite))return null;
+    if(!Number.isFinite(time) || (this.lastTime!==null && time<=this.lastTime))return null;
     if(this.lastTime!==null && time-this.lastTime>1500)this.reset();
     const dt=this.lastTime===null?20:Math.max(1,time-this.lastTime);this.lastTime=time;
     const v=[acceleration.x,acceleration.y,acceleration.z];
-    if(!this.gravity){this.gravity=v.slice();return null;}
+    if(!this.gravity){this.gravity=includesGravity?v.slice():[0,0,0];if(includesGravity)return null;}
     const alpha=1-Math.exp(-dt/650);
-    this.gravity=this.gravity.map((g,i)=>g+alpha*(v[i]-g));
-    const norm=Math.hypot(...this.gravity);if(norm<1)return null;
-    const vertical=v.reduce((sum,a,i)=>sum+(a-this.gravity[i])*this.gravity[i]/norm,0);
+    if(includesGravity)this.gravity=this.gravity.map((g,i)=>g+alpha*(v[i]-g));
+    const norm=Math.hypot(...this.gravity);if(includesGravity && norm<1)return null;
+    const vertical=includesGravity?v.reduce((sum,a,i)=>sum+(a-this.gravity[i])*this.gravity[i]/norm,0):v.reduce((largest,a)=>Math.abs(a)>Math.abs(largest)?a:largest,0);
     const linear=Math.hypot(...v.map((a,i)=>a-this.gravity[i]));
     const lateral=Math.sqrt(Math.max(0,linear*linear-vertical*vertical));
     const spin=Math.hypot(rotation.alpha||0,rotation.beta||0,rotation.gamma||0);
