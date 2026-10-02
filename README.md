@@ -1,5 +1,7 @@
 # Stride
 
+Calories are estimated active energy (excluding resting energy), using `(MET - 1) × 3.5 × weightKg / 200 × confirmedMovingMinutes`. Each detector result contributes moving minutes as `confirmedSteps / cadence`, so pauses or suspended sensors add no calories. Walking assumes moderate level walking (3.8 MET); jogging/running assumes general jogging (7.5 MET), selected by the user rather than inferred from cadence. Values come from the [2024 Compendium walking](https://pacompendium.com/walking/) and [running](https://pacompendium.com/running/) tables. Actual speed, terrain and individual metabolism can change expenditure. Weight defaults visibly to 70 kg and accepts 30–300 kg. Weight changes recalculate the current session; completed session estimates remain fixed. Activity changes affect subsequent steps. Profile and current-session energy persist locally; existing sessions without calorie data keep their original step history.
+
 A dependency-free web step tracker. Run `npm start`, then open http://localhost:3000. Run `npm test` for synthetic detector checks.
 
 For Vercel, import this repository with the repository root as the Root Directory. The checked-in `vercel.json` selects the Other framework preset, runs `npm run build`, and serves `dist/` as a static site. No serverless function is required. `server.js` is only the local development server. After pushing these deployment files, redeploy the project to replace any previous Node function deployment. For other static hosts, run `npm run build` and publish `dist/`.

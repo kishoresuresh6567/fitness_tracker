@@ -4,15 +4,16 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {StepDetector} from './detector.js';
 import {MotionInput} from './motion.js';
+import {energyPerKg} from './energy.js';
 
-const source=readFileSync(new URL('./app.js',import.meta.url),'utf8').replace("import {StepDetector} from './detector.js';",'').replace("import {MotionInput} from './motion.js';",'');
+const source=readFileSync(new URL('./app.js',import.meta.url),'utf8').replace("import {StepDetector} from './detector.js';",'').replace("import {MotionInput} from './motion.js';",'').replace("import {energyPerKg} from './energy.js';",'');
 function boot(storage=new Map(),motion={}){
   let now=100000;
   const handlers={},elements=new Map(),intervals=new Set();
   const element=()=>({textContent:'',disabled:false,append(){},replaceChildren(){},addEventListener(type,fn){this[type]=fn;}});
   const document={hidden:false,getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);},createElement:element,addEventListener(type,fn){handlers[type]=fn;}};
   const window={isSecureContext:true,DeviceMotionEvent:motion,addEventListener(type,fn){handlers[type]=fn;},removeEventListener(type){delete handlers[type];}};
-  const context=vm.createContext({document,window,DeviceMotionEvent:window.DeviceMotionEvent,navigator:{},StepDetector,MotionInput,Date:class extends Date{static now(){return now;}},performance:{now:()=>now},localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},setInterval:fn=>{intervals.add(fn);return fn;},clearInterval:fn=>intervals.delete(fn)});
+  const context=vm.createContext({document,window,DeviceMotionEvent:window.DeviceMotionEvent,navigator:{},StepDetector,MotionInput,energyPerKg,Date:class extends Date{static now(){return now;}},performance:{now:()=>now},localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},setInterval:fn=>{intervals.add(fn);return fn;},clearInterval:fn=>intervals.delete(fn)});
   vm.runInContext(source,context);
   return {storage,document,window,handlers,elements,context,advance(ms){now+=ms;for(const tick of intervals)tick();},async click(){await elements.get('start').click();},async enable(){await elements.get('motion').click();},state(){return JSON.parse(storage.get('stride-v1'));}};
 }
@@ -107,4 +108,21 @@ test('loose-pocket motion reaches the displayed counter through permission-requi
     assert.ok(app.state().total>=20 && app.state().total<=25,`gravity=${gravity}, count=${app.state().total}`);
     assert.equal(app.elements.get('steps').textContent,String(app.state().total));
   }
+});
+test('calories persist across reload, freeze during pauses and save with history',async()=>{
+  const app=boot();await app.click();
+  for(let t=0;t<10000;t+=20){app.advance(20);app.handlers.devicemotion({timeStamp:t,accelerationIncludingGravity:{x:0,y:9.81+1.4*Math.sin(t/1000*4*Math.PI),z:0}});}
+  const calories=app.elements.get('calories').textContent;assert.ok(Number(calories)>0);
+  app.advance(60000);assert.equal(app.elements.get('calories').textContent,calories);
+  const restored=boot(app.storage);assert.equal(restored.elements.get('calories').textContent,calories);
+  restored.elements.get('weight').value='140';restored.elements.get('weight').change();
+  assert.ok(Math.abs(Number(restored.elements.get('calories').textContent)-Number(calories)*2)<0.2);
+  await restored.click();assert.ok(restored.state().sessions[0].calories>0);
+  const completed=restored.state().sessions[0].calories;
+  restored.elements.get('weight').value='80';restored.elements.get('weight').change();
+  assert.equal(restored.state().sessions[0].calories,completed);
+  await restored.click();assert.equal(restored.elements.get('calories').textContent,'0.0');
+});
+test('invalid weight does not overwrite a saved profile',()=>{
+  const app=boot();app.elements.get('weight').value='';app.elements.get('weight').change();assert.equal(app.elements.get('weight').value,70);
 });
